@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>miniCRM</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 24px; text-align: center; }
+    #status { margin-top: 48px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div id="status">Открываем miniCRM…</div>
+
+  <form id="miniCrmBridgeForm" method="post" action="https://script.google.com/macros/s/AKfycby7uRq4LOAYzuXWkN40oym9kmVG7_tnIbs_n_IhY3Gw5IGZrnlyIHLVyytlVFtRnkTmgw/exec">
+    <input id="telegramInitData" type="hidden" name="telegram_init_data" value="">
+  </form>
+
+  <script>
+    (function () {
+      const status = document.getElementById('status');
+      const form = document.getElementById('miniCrmBridgeForm');
+      const webApp = window.Telegram && window.Telegram.WebApp;
+
+      if (!webApp) {
+        status.textContent = 'Откройте эту страницу через Telegram-бота.';
+        return;
+      }
+
+      try {
+        webApp.ready();
+        webApp.expand();
+      } catch (error) {}
+
+      const initData = String(webApp.initData || '').trim();
+
+      if (!initData) {
+        status.textContent = 'Telegram не передал данные авторизации.';
+        return;
+      }
+
+      if (form.action.includes('PASTE_APPS_SCRIPT_EXEC_URL_HERE')) {
+        status.textContent = 'Не настроен URL Apps Script Web App.';
+        return;
+      }
+
+      document.getElementById('telegramInitData').value = initData;
+      form.submit();
+    })();
+  </script>
+</body>
+</html>
