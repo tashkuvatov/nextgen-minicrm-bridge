@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uz">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,20 +11,40 @@
   </style>
 </head>
 <body>
-  <div id="status">Открываем miniCRM…</div>
+  <div id="status">miniCRM ochilmoqda…</div>
 
-  <form id="miniCrmBridgeForm" method="post" action="https://script.google.com/macros/s/AKfycby7uRq4LOAYzuXWkN40oym9kmVG7_tnIbs_n_IhY3Gw5IGZrnlyIHLVyytlVFtRnkTmgw/exec">
+  <form id="miniCrmBridgeForm" method="post" action="PASTE_APPS_SCRIPT_EXEC_URL_HERE">
     <input id="telegramInitData" type="hidden" name="telegram_init_data" value="">
   </form>
 
   <script>
     (function () {
+      const BRIDGE_MESSAGES = {
+        uz: {
+          opening: 'miniCRM ochilmoqda…',
+          openThroughBot: 'Bu sahifani Telegram-bot orqali oching.',
+          missingAuth: 'Telegram avtorizatsiya ma’lumotlarini yubormadi.',
+          missingWebAppUrl: 'Apps Script Web App URL sozlanmagan.'
+        },
+        ru: {
+          opening: 'Открываем miniCRM…',
+          openThroughBot: 'Откройте эту страницу через Telegram-бота.',
+          missingAuth: 'Telegram не передал данные авторизации.',
+          missingWebAppUrl: 'Не настроен URL Apps Script Web App.'
+        }
+      };
+
+      const locale = 'uz';
+      const messages = BRIDGE_MESSAGES[locale] || BRIDGE_MESSAGES.uz;
       const status = document.getElementById('status');
       const form = document.getElementById('miniCrmBridgeForm');
       const webApp = window.Telegram && window.Telegram.WebApp;
 
+      document.documentElement.lang = locale;
+      status.textContent = messages.opening;
+
       if (!webApp) {
-        status.textContent = 'Откройте эту страницу через Telegram-бота.';
+        status.textContent = messages.openThroughBot;
         return;
       }
 
@@ -36,12 +56,12 @@
       const initData = String(webApp.initData || '').trim();
 
       if (!initData) {
-        status.textContent = 'Telegram не передал данные авторизации.';
+        status.textContent = messages.missingAuth;
         return;
       }
 
       if (form.action.includes('PASTE_APPS_SCRIPT_EXEC_URL_HERE')) {
-        status.textContent = 'Не настроен URL Apps Script Web App.';
+        status.textContent = messages.missingWebAppUrl;
         return;
       }
 
