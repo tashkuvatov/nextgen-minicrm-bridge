@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>miniCRM</title>
   <script src="https://telegram.org/js/telegram-web-app.js?63"></script>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 24px; text-align: center; }
+   <style>
+    :root { --crm-bg:#f4f6fa; --crm-text:#1c2838; }
+    html { min-height:100%; background:var(--crm-bg); }
+    body { margin:0; min-height:100vh; font:16px/1.5 Arial,sans-serif; padding:24px; text-align:center; background:var(--crm-bg); color:var(--crm-text); }
     #status { margin-top: 48px; line-height: 1.5; }
   </style>
 </head>
@@ -18,6 +20,68 @@
   </form>
 
   <script>
+        // Shared theme UI start
+        function miniCrmThemeColor_(value, fallback) {
+            const color = String(value || '').trim();
+            if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+            if (/^#[0-9a-f]{3}$/i.test(color)) return '#' + color.slice(1).split('').map(c => c + c).join('');
+            return fallback;
+        }
+
+        function miniCrmThemeLuminance_(color) {
+            const channels = [1, 3, 5].map(function (offset) {
+                const value = parseInt(color.slice(offset, offset + 2), 16) / 255;
+                return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+            });
+            return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+        }
+
+        function miniCrmThemeContrast_(first, second) {
+            const a = miniCrmThemeLuminance_(first), b = miniCrmThemeLuminance_(second);
+            return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        }
+
+        function miniCrmReadableThemeColor_(value, backgrounds, fallback, safeColor) {
+            const candidate = miniCrmThemeColor_(value, fallback);
+            const readable = color => backgrounds.every(bg => miniCrmThemeContrast_(color, bg) >= 4.5);
+            if (readable(candidate)) return candidate;
+            if (readable(fallback)) return fallback;
+            if (safeColor && readable(safeColor)) return safeColor;
+            return miniCrmThemeContrast_('#ffffff', backgrounds[0]) > miniCrmThemeContrast_('#000000', backgrounds[0])
+                ? '#ffffff' : '#000000';
+        }
+
+        function applyMiniCrmTheme_(webApp) {
+            const root = document.documentElement;
+            const params = webApp && webApp.themeParams || {};
+            const bg = miniCrmThemeColor_(params.bg_color, webApp && webApp.colorScheme === 'dark' ? '#17212b' : '#f4f6fa');
+            const dark = miniCrmThemeLuminance_(bg) < 0.35;
+            const text = miniCrmReadableThemeColor_(params.text_color, [bg], dark ? '#edf3f8' : '#1c2838');
+            const readableSurface = (candidate, fallback) => {
+                const color = miniCrmThemeColor_(candidate, fallback);
+                return miniCrmThemeContrast_(text, color) >= 4.5 ? color : bg;
+            };
+            const surface = readableSurface(params.section_bg_color || params.secondary_bg_color, dark ? '#202e3b' : '#ffffff');
+            const soft = readableSurface(params.secondary_bg_color, dark ? '#293947' : '#edf1f7');
+            const backgrounds = [bg, surface, soft];
+            const muted = miniCrmReadableThemeColor_(params.hint_color, backgrounds, dark ? '#b7c5d3' : '#526174', text);
+            const link = miniCrmReadableThemeColor_(params.link_color, backgrounds, dark ? '#9dcaff' : '#1e59a0', text);
+            const primary = miniCrmThemeColor_(params.button_color, dark ? '#367ac3' : '#2463ac');
+            const primaryText = miniCrmReadableThemeColor_(params.button_text_color, [primary], '#ffffff');
+            const values = {
+                bg, text, surface, soft, muted, link, primary, 'primary-text': primaryText,
+                border: dark ? '#586b7d' : '#b7c4d3',
+                danger: miniCrmReadableThemeColor_(params.destructive_text_color, backgrounds, dark ? '#ffadb3' : '#b42332', text),
+                'warning-bg': dark ? '#49391e' : '#fff6df',
+                'warning-text': dark ? '#ffe2a8' : '#744700',
+                'warning-border': dark ? '#a3844b' : '#be9b4c'
+            };
+            Object.keys(values).forEach(key => root.style.setProperty('--crm-' + key, values[key]));
+            root.style.colorScheme = dark ? 'dark' : 'light';
+            root.setAttribute('data-crm-theme', dark ? 'dark' : 'light');
+        }
+
+
     (function () {
       const BRIDGE_MESSAGES = {
         uz: {
@@ -42,6 +106,10 @@
 
       document.documentElement.lang = locale;
       status.textContent = messages.opening;
+      applyMiniCrmTheme_(webApp);
+      if (webApp && typeof webApp.onEvent === 'function') {
+        try { webApp.onEvent('themeChanged', function () { applyMiniCrmTheme_(webApp); }); } catch (error) {}
+      }
 
       if (!webApp) {
         status.textContent = messages.openThroughBot;
